@@ -29,14 +29,10 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* ============================================================
-          HERO + FORM
-          ============================================================ */}
-      <section className="relative">
-        <div className="mx-auto max-w-7xl px-6 py-12 md:py-20 lg:py-24">
-          <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
-            {/* CHAP TOMON — HERO */}
-            <div className="lg:col-span-7">
+
+      <section className="bg-bone py-16 md:py-24">
+        <div className="mx-auto max-w-7xl px-6">
+      <div className="lg:col-span-7">
               <div className="rise mb-6 flex items-center gap-3">
                 <div className="h-px w-12 bg-rust" aria-hidden="true" />
                 <span className="font-mono text-xs uppercase tracking-[0.3em] text-rust">
@@ -96,6 +92,74 @@ export default function HomePage() {
               </div>
             </div>
 
+     </div>
+      </section>
+
+      {/* ============================================================
+          HERO + FORM
+          ============================================================ */}
+
+
+      <section className="relative">
+
+                     {/* ============================================================
+          MODELS / KATEGORIYALAR
+          ============================================================ */}
+      <div className="mx-auto max-w-7xl px-6 py-12 md:py-20 lg:py-24">
+          <div className="mb-12 text-center lg:col-span-5">
+            <span className="font-mono text-xs uppercase tracking-[0.3em] text-rust">
+              Modellar
+            </span>
+            <h2 className="mt-3 font-display text-4xl font-bold text-ink md:text-5xl">
+              Qaysi mashina uchun?
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-ink/60">
+              Quyida ko'rsatilgan modellar — eng ko'p so'raladiganlari. Boshqa
+              modellar uchun ham bemalol so'rov qoldiring.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
+            {[
+              "Cobalt",
+              "Spark",
+              "Lacetti",
+              "Nexia",
+              "Captiva",
+              "Damas",
+              "Matiz",
+              "Malibu",
+              "Tracker",
+              "Onix",
+              "Lada",
+              "Boshqa",
+            ].map((model) => (
+              <div
+                key={model}
+                className="rounded-2xl border-2 border-ink/10 bg-white p-4 text-center transition-colors hover:border-rust hover:bg-rust hover:text-bone"
+              >
+                <div className="font-display text-lg font-bold">{model}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <a
+              href="#form"
+              className="btn-primary inline-flex items-center gap-2 rounded-full bg-rust px-8 py-4 font-display text-lg font-bold uppercase tracking-wider text-bone"
+            >
+              Buyurtma berish
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+</div>
+      </section>
+
+ <section className="relative">
+        <div className="mx-auto max-w-7xl px-6 py-12 md:py-20 lg:py-24">
+            {/* CHAP TOMON — HERO */}
+        
+
             {/* O'NG TOMON — FORM */}
             <div className="lg:col-span-5">
               <div
@@ -125,7 +189,6 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-        </div>
       </section>
 
       {/* ============================================================
@@ -192,59 +255,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ============================================================
-          MODELS / KATEGORIYALAR
-          ============================================================ */}
-      <section className="bg-bone py-16 md:py-24">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-12 text-center">
-            <span className="font-mono text-xs uppercase tracking-[0.3em] text-rust">
-              Modellar
-            </span>
-            <h2 className="mt-3 font-display text-4xl font-bold text-ink md:text-5xl">
-              Qaysi mashina uchun?
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-ink/60">
-              Quyida ko'rsatilgan modellar — eng ko'p so'raladiganlari. Boshqa
-              modellar uchun ham bemalol so'rov qoldiring.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-            {[
-              "Cobalt",
-              "Spark",
-              "Lacetti",
-              "Nexia",
-              "Captiva",
-              "Damas",
-              "Matiz",
-              "Malibu",
-              "Tracker",
-              "Onix",
-              "Lada",
-              "Boshqa",
-            ].map((model) => (
-              <div
-                key={model}
-                className="rounded-2xl border-2 border-ink/10 bg-white p-4 text-center transition-colors hover:border-rust hover:bg-rust hover:text-bone"
-              >
-                <div className="font-display text-lg font-bold">{model}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-12 text-center">
-            <a
-              href="#form"
-              className="btn-primary inline-flex items-center gap-2 rounded-full bg-rust px-8 py-4 font-display text-lg font-bold uppercase tracking-wider text-bone"
-            >
-              Buyurtma berish
-              <span aria-hidden="true">→</span>
-            </a>
-          </div>
-        </div>
-      </section>
+    
 
       {/* ============================================================
           FOOTER
