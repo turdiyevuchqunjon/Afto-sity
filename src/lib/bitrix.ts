@@ -9,12 +9,12 @@ const REQUEST_TIMEOUT_MS = 10_000;
 // META FIELD MAPPING — Bitrix avtomatik kodlari
 // ============================================================
 const META_FIELDS = {
-  FBP: "UF_CRM_1777836729044",
-  FBC: "UF_CRM_1777836751143",
-  CLIENT_IP: "UF_CRM_1777836784327",   // tasdiqlangan, ishlayapti
-  CLIENT_UA: "UF_CRM_1777836800142",   // tasdiqlangan, ishlayapti
-  PURCHASE_SENT: "UF_CRM_1777836770409",
-  EVENT_ID: "UF_CRM_1777837210971",   // ENG OXIRGI yaratilgan
+  EVENT_ID: "UF_CRM_1777836729044",      // 1-yaratilgan
+  FBP: "UF_CRM_1777836751143",            // 2-yaratilgan
+  FBC: "UF_CRM_1777836770409",            // 3-yaratilgan
+  CLIENT_IP: "UF_CRM_1777836784327",      // 4-yaratilgan (TASDIQLANGAN)
+  CLIENT_UA: "UF_CRM_1777836800142",      // 5-yaratilgan (TASDIQLANGAN)
+  PURCHASE_SENT: "UF_CRM_1777836816157",  // 6-yaratilgan
 } as const;
 
 interface BitrixSuccessResponse<T> {
@@ -153,12 +153,11 @@ export async function createLead(
   if (input.utmTerm) dealFields.UTM_TERM = input.utmTerm;
 
   // META TRACKING — Bitrix'dagi haqiqiy field kodlari
-  if (input.metaEventId) dealFields[META_FIELDS.EVENT_ID] = input.metaEventId;
+if (input.metaEventId) dealFields[META_FIELDS.EVENT_ID] = input.metaEventId;
   if (input.fbp) dealFields[META_FIELDS.FBP] = input.fbp;
   if (input.fbc) dealFields[META_FIELDS.FBC] = input.fbc;
   if (input.clientIp) dealFields[META_FIELDS.CLIENT_IP] = input.clientIp;
   if (input.clientUserAgent) dealFields[META_FIELDS.CLIENT_UA] = input.clientUserAgent;
-
   let dealId: number;
   try {
     dealId = await bitrixCall<number>("crm.deal.add", { fields: dealFields });
