@@ -1,21 +1,18 @@
 /**
  * Bitrix24 REST API client
+ *
+ * Web saytdan kelgan lid'larni Bitrix24 CRM'ga yozadi.
+ * Meta CAPI uchun kerakli ma'lumotlar (IP, UA, fbp, fbc, eventId)
+ * Deal'ning Comments maydoniga structured tarzda saqlanadi —
+ * keyinroq Purchase event uchun shu yerdan o'qib olamiz.
  */
 
 const BITRIX_WEBHOOK_URL = process.env.BITRIX_WEBHOOK_URL;
 const REQUEST_TIMEOUT_MS = 10_000;
 
 // ============================================================
-// META FIELD MAPPING — Bitrix avtomatik kodlari
+// LOW-LEVEL CLIENT
 // ============================================================
-const META_FIELDS = {
-  EVENT_ID: "UF_CRM_1777836729044",      // 1-yaratilgan
-  FBP: "UF_CRM_1777836751143",            // 2-yaratilgan
-  FBC: "UF_CRM_1777836770409",            // 3-yaratilgan
-  CLIENT_IP: "UF_CRM_1777836784327",      // 4-yaratilgan (TASDIQLANGAN)
-  CLIENT_UA: "UF_CRM_1777836800142",      // 5-yaratilgan (TASDIQLANGAN)
-  PURCHASE_SENT: "UF_CRM_1777836816157",  // 6-yaratilgan
-} as const;
 
 interface BitrixSuccessResponse<T> {
   result: T;
@@ -83,6 +80,60 @@ async function bitrixCall<T>(
 }
 
 // ============================================================
+// META METADATA — Comments ichida saqlash uchun
+// ============================================================
+
+/**
+ * Meta CAPI uchun kerakli ma'lumotlarni Comments ichiga
+ * structured tarzda yozamiz. Keyinroq Purchase event uchun
+ * shu yerdan parse qilib olishimiz mumkin.
+ */
+function buildMetaMetadata(input: {
+  metaEventId?: string;
+  fbp?: string;
+  fbc?: string;
+  clientIp?: string;
+  clientUserAgent?: string;
+}): string {
+  const lines: string[] = ["", "--- META TRACKING (sotuvchi e'tibor bermasin) ---"];
+
+  if (input.metaEventId) lines.push(`META_EVENT_ID: ${input.metaEventId}`);
+  if (input.fbp) lines.push(`META_FBP: ${input.fbp}`);
+  if (input.fbc) lines.push(`META_FBC: ${input.fbc}`);
+  if (input.clientIp) lines.push(`META_IP: ${input.clientIp}`);
+  if (input.clientUserAgent) lines.push(`META_UA: ${input.clientUserAgent}`);
+
+  return lines.length > 2 ? lines.join("\n") : "";
+}
+
+/**
+ * Comments matnidan Meta metadata'ni parse qilib oladi.
+ * Purchase event yuborish paytida kerak bo'ladi.
+ */
+export function parseMetaMetadata(comments: string | undefined): {
+  eventId?: string;
+  fbp?: string;
+  fbc?: string;
+  ip?: string;
+  ua?: string;
+} {
+  if (!comments) return {};
+
+  const get = (key: string): string | undefined => {
+    const match = comments.match(new RegExp(`^${key}:\\s*(.+)$`, "m"));
+    return match ? match[1].trim() : undefined;
+  };
+
+  return {
+    eventId: get("META_EVENT_ID"),
+    fbp: get("META_FBP"),
+    fbc: get("META_FBC"),
+    ip: get("META_IP"),
+    ua: get("META_UA"),
+  };
+}
+
+// ============================================================
 // CREATE LEAD
 // ============================================================
 
@@ -113,6 +164,7 @@ export interface CreateLeadResult {
 export async function createLead(
   input: CreateLeadInput
 ): Promise<CreateLeadResult> {
+  // 1. Contact yaratamiz
   const contactFields: Record<string, unknown> = {
     NAME: input.name,
     OPENED: "Y",
@@ -128,13 +180,26 @@ export async function createLead(
     fields: contactFields,
   });
 
-  const commentLines: string[] = [];
-  if (input.productName) commentLines.push(`🚗 Mashina/qism: ${input.productName}`);
-  if (input.comments) commentLines.push(`💬 Izoh: ${input.comments}`);
-  if (input.pageUrl) commentLines.push(`🔗 Sahifa: ${input.pageUrl}`);
-  if (input.clientIp) commentLines.push(`🌐 IP: ${input.clientIp}`);
-  if (input.clientUserAgent) commentLines.push(`📱 UA: ${input.clientUserAgent}`);
+  // 2. Comments — sotuvchi uchun ko'rinadigan qism
+  const visibleLines: string[] = [];
+  if (input.productName) visibleLines.push(`🚗 Mashina/qism: ${input.productName}`);
+  if (input.comments) visibleLines.push(`💬 Izoh: ${input.comments}`);
+  if (input.pageUrl) visibleLines.push(`🔗 Sahifa: ${input.pageUrl}`);
 
+  // 3. Meta metadata — sotuvchiga yashirin, lekin texnik kerak
+  const metaBlock = buildMetaMetadata({
+    metaEventId: input.metaEventId,
+    fbp: input.fbp,
+    fbc: input.fbc,
+    clientIp: input.clientIp,
+    clientUserAgent: input.clientUserAgent,
+  });
+
+  const fullComments = [visibleLines.join("\n"), metaBlock]
+    .filter(Boolean)
+    .join("\n");
+
+  // 4. Deal yaratamiz
   const dealFields: Record<string, unknown> = {
     TITLE: input.productName
       ? `${input.productName} — ${input.name}`
@@ -143,7 +208,7 @@ export async function createLead(
     CURRENCY_ID: "USD",
     SOURCE_ID: "WEB",
     CONTACT_ID: contactId,
-    COMMENTS: commentLines.join("\n"),
+    COMMENTS: fullComments,
   };
 
   if (input.utmSource) dealFields.UTM_SOURCE = input.utmSource;
@@ -152,12 +217,6 @@ export async function createLead(
   if (input.utmContent) dealFields.UTM_CONTENT = input.utmContent;
   if (input.utmTerm) dealFields.UTM_TERM = input.utmTerm;
 
-  // META TRACKING — Bitrix'dagi haqiqiy field kodlari
-if (input.metaEventId) dealFields[META_FIELDS.EVENT_ID] = input.metaEventId;
-  if (input.fbp) dealFields[META_FIELDS.FBP] = input.fbp;
-  if (input.fbc) dealFields[META_FIELDS.FBC] = input.fbc;
-  if (input.clientIp) dealFields[META_FIELDS.CLIENT_IP] = input.clientIp;
-  if (input.clientUserAgent) dealFields[META_FIELDS.CLIENT_UA] = input.clientUserAgent;
   let dealId: number;
   try {
     dealId = await bitrixCall<number>("crm.deal.add", { fields: dealFields });
@@ -167,7 +226,9 @@ if (input.metaEventId) dealFields[META_FIELDS.EVENT_ID] = input.metaEventId;
       e
     );
     throw new Error(
-      `Mijoz saqlandi, lekin sделka xato: ${e instanceof Error ? e.message : String(e)}`
+      `Mijoz saqlandi, lekin sделka xato: ${
+        e instanceof Error ? e.message : String(e)
+      }`
     );
   }
 
@@ -175,7 +236,7 @@ if (input.metaEventId) dealFields[META_FIELDS.EVENT_ID] = input.metaEventId;
 }
 
 // ============================================================
-// READ DEAL (Purchase event uchun)
+// READ DEAL — Purchase event uchun
 // ============================================================
 
 export interface DealData {
@@ -185,23 +246,31 @@ export interface DealData {
   CURRENCY_ID?: string;
   CONTACT_ID?: string;
   STAGE_ID?: string;
+  COMMENTS?: string;
+  // Meta'dan Comments orqali parse qilingan ma'lumotlar
+  UF_CRM_META_EVENT_ID?: string;
+  UF_CRM_META_FBP?: string;
+  UF_CRM_META_FBC?: string;
+  UF_CRM_META_CLIENT_IP?: string;
+  UF_CRM_META_CLIENT_UA?: string;
+  UF_CRM_META_PURCHASE_SENT?: string;
   [key: string]: unknown;
 }
 
 export async function getDeal(dealId: number | string): Promise<DealData> {
   const deal = await bitrixCall<DealData>("crm.deal.get", { id: dealId });
 
-  // Meta field'larni standart nomlarga moslashtiramiz (api/bitrix-purchase uchun)
+  // Comments dan Meta metadata'ni ajratib olamiz
+  const meta = parseMetaMetadata(deal.COMMENTS);
+
   return {
     ...deal,
-    UF_CRM_META_EVENT_ID: deal[META_FIELDS.EVENT_ID] as string | undefined,
-    UF_CRM_META_FBP: deal[META_FIELDS.FBP] as string | undefined,
-    UF_CRM_META_FBC: deal[META_FIELDS.FBC] as string | undefined,
-    UF_CRM_META_CLIENT_IP: deal[META_FIELDS.CLIENT_IP] as string | undefined,
-    UF_CRM_META_CLIENT_UA: deal[META_FIELDS.CLIENT_UA] as string | undefined,
-    UF_CRM_META_PURCHASE_SENT: deal[META_FIELDS.PURCHASE_SENT] as
-      | string
-      | undefined,
+    UF_CRM_META_EVENT_ID: meta.eventId,
+    UF_CRM_META_FBP: meta.fbp,
+    UF_CRM_META_FBC: meta.fbc,
+    UF_CRM_META_CLIENT_IP: meta.ip,
+    UF_CRM_META_CLIENT_UA: meta.ua,
+    UF_CRM_META_PURCHASE_SENT: undefined, // alohida belgi yo'q, idempotent bo'ladi event_id orqali
   };
 }
 
@@ -220,13 +289,13 @@ export async function getContact(
   return bitrixCall<ContactData>("crm.contact.get", { id: contactId });
 }
 
+/**
+ * Purchase event yuborilganini belgilash.
+ * Bu versiyada hech narsa qilmaydi — Meta tomonida event_id orqali deduplikatsiya bo'ladi.
+ * Kelajakda kerak bo'lsa custom field qo'shish mumkin.
+ */
 export async function markDealAsPurchaseSent(
-  dealId: number | string
+  _dealId: number | string
 ): Promise<boolean> {
-  return bitrixCall<boolean>("crm.deal.update", {
-    id: dealId,
-    fields: {
-      [META_FIELDS.PURCHASE_SENT]: "Y",
-    },
-  });
+  return true;
 }
