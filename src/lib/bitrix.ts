@@ -5,6 +5,18 @@
 const BITRIX_WEBHOOK_URL = process.env.BITRIX_WEBHOOK_URL;
 const REQUEST_TIMEOUT_MS = 10_000;
 
+// ============================================================
+// META FIELD MAPPING — Bitrix avtomatik kodlari
+// ============================================================
+const META_FIELDS = {
+  EVENT_ID: "UF_CRM_1777836729044",
+  FBP: "UF_CRM_1777836751143",
+  FBC: "UF_CRM_1777836770409",
+  CLIENT_IP: "UF_CRM_1777836784327",
+  CLIENT_UA: "UF_CRM_1777836800142",
+  PURCHASE_SENT: "UF_CRM_1777836816157",
+} as const;
+
 interface BitrixSuccessResponse<T> {
   result: T;
   time?: { start: number; finish: number; duration: number };
@@ -140,11 +152,12 @@ export async function createLead(
   if (input.utmContent) dealFields.UTM_CONTENT = input.utmContent;
   if (input.utmTerm) dealFields.UTM_TERM = input.utmTerm;
 
-  if (input.metaEventId) dealFields.UF_CRM_META_EVENT_ID = input.metaEventId;
-  if (input.fbp) dealFields.UF_CRM_META_FBP = input.fbp;
-  if (input.fbc) dealFields.UF_CRM_META_FBC = input.fbc;
-  if (input.clientIp) dealFields.UF_CRM_META_CLIENT_IP = input.clientIp;
-  if (input.clientUserAgent) dealFields.UF_CRM_META_CLIENT_UA = input.clientUserAgent;
+  // META TRACKING — Bitrix'dagi haqiqiy field kodlari
+  if (input.metaEventId) dealFields[META_FIELDS.EVENT_ID] = input.metaEventId;
+  if (input.fbp) dealFields[META_FIELDS.FBP] = input.fbp;
+  if (input.fbc) dealFields[META_FIELDS.FBC] = input.fbc;
+  if (input.clientIp) dealFields[META_FIELDS.CLIENT_IP] = input.clientIp;
+  if (input.clientUserAgent) dealFields[META_FIELDS.CLIENT_UA] = input.clientUserAgent;
 
   let dealId: number;
   try {
@@ -163,7 +176,7 @@ export async function createLead(
 }
 
 // ============================================================
-// READ DEAL
+// READ DEAL (Purchase event uchun)
 // ============================================================
 
 export interface DealData {
@@ -173,17 +186,24 @@ export interface DealData {
   CURRENCY_ID?: string;
   CONTACT_ID?: string;
   STAGE_ID?: string;
-  UF_CRM_META_EVENT_ID?: string;
-  UF_CRM_META_FBP?: string;
-  UF_CRM_META_FBC?: string;
-  UF_CRM_META_CLIENT_IP?: string;
-  UF_CRM_META_CLIENT_UA?: string;
-  UF_CRM_META_PURCHASE_SENT?: string;
   [key: string]: unknown;
 }
 
 export async function getDeal(dealId: number | string): Promise<DealData> {
-  return bitrixCall<DealData>("crm.deal.get", { id: dealId });
+  const deal = await bitrixCall<DealData>("crm.deal.get", { id: dealId });
+
+  // Meta field'larni standart nomlarga moslashtiramiz (api/bitrix-purchase uchun)
+  return {
+    ...deal,
+    UF_CRM_META_EVENT_ID: deal[META_FIELDS.EVENT_ID] as string | undefined,
+    UF_CRM_META_FBP: deal[META_FIELDS.FBP] as string | undefined,
+    UF_CRM_META_FBC: deal[META_FIELDS.FBC] as string | undefined,
+    UF_CRM_META_CLIENT_IP: deal[META_FIELDS.CLIENT_IP] as string | undefined,
+    UF_CRM_META_CLIENT_UA: deal[META_FIELDS.CLIENT_UA] as string | undefined,
+    UF_CRM_META_PURCHASE_SENT: deal[META_FIELDS.PURCHASE_SENT] as
+      | string
+      | undefined,
+  };
 }
 
 export interface ContactData {
@@ -207,7 +227,7 @@ export async function markDealAsPurchaseSent(
   return bitrixCall<boolean>("crm.deal.update", {
     id: dealId,
     fields: {
-      UF_CRM_META_PURCHASE_SENT: "Y",
+      [META_FIELDS.PURCHASE_SENT]: "Y",
     },
   });
 }
