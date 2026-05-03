@@ -5,30 +5,11 @@ import { sendMetaEvent, generateEventId } from "@/lib/meta-capi";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Bitrix24 Robot/Webhook bu endpoint'ga POST yuboradi.
- *
- * Workflow:
- *   1. Sotuvchi Deal'ni "Сотувда бор" stage'ga ko'chiradi
- *   2. Bitrix Robot avtomatik bu URL'ga so'rov yuboradi
- *   3. Server Deal va Contact ma'lumotlarini Bitrix'dan o'qiydi
- *   4. Meta CAPI'ga Purchase event yuboradi (mijoz + summa bilan)
- *   5. Deal'ga belgi qo'yiladi (qayta yubormaslik uchun)
- *
- * Xavfsizlik: URL'da ?token=... bo'lishi shart.
- */
-
 const SECRET_TOKEN = process.env.BITRIX_PURCHASE_WEBHOOK_TOKEN;
 
-/**
- * Bitrix ikki xil format yuborishi mumkin:
- *   - JSON: { dealId: 123 } yoki { ID: 123 }
- *   - Form-urlencoded: data[FIELDS][ID]=123 (standart Bitrix robot formati)
- */
 async function extractDealId(req: NextRequest): Promise<string | null> {
   const contentType = req.headers.get("content-type") || "";
 
-  // JSON
   if (contentType.includes("application/json")) {
     try {
       const body = await req.json();
@@ -45,7 +26,6 @@ async function extractDealId(req: NextRequest): Promise<string | null> {
     }
   }
 
-  // Form-urlencoded
   try {
     const formData = await req.formData();
     return (
@@ -61,7 +41,6 @@ async function extractDealId(req: NextRequest): Promise<string | null> {
 }
 
 export async function POST(req: NextRequest) {
-  // 1. Token tekshirish
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
   if (!SECRET_TOKEN || token !== SECRET_TOKEN) {
@@ -69,7 +48,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  // 2. Deal ID
   const dealId = await extractDealId(req);
   if (!dealId) {
     console.error("[purchase] Deal ID topilmadi");
@@ -79,7 +57,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 3. Bitrix'dan Deal o'qish
   let deal;
   try {
     deal = await getDeal(dealId);
@@ -91,7 +68,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4. Takrorlanish tekshiruvi (qayta yubormaslik)
   if (deal.UF_CRM_META_PURCHASE_SENT === "Y") {
     console.log(`[purchase] Deal ${dealId} uchun Purchase allaqachon yuborilgan`);
     return NextResponse.json({
@@ -101,7 +77,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // 5. Contact ma'lumotlarini olish
   let contact;
   if (deal.CONTACT_ID) {
     try {
@@ -116,25 +91,23 @@ export async function POST(req: NextRequest) {
   const firstName = contact?.NAME;
   const lastName = contact?.LAST_NAME;
 
-  // 6. Deal qiymati
   const value = deal.OPPORTUNITY ? parseFloat(deal.OPPORTUNITY) : undefined;
-  const currency = deal.CURRENCY_ID || "UZS";
+  const currency = deal.CURRENCY_ID || "USD";
 
   if (!value || value <= 0) {
     console.warn(
-      `[purchase] Deal ${dealId} qiymati 0 — Purchase yuborilmaydi (ROAS uchun summa shart)`
+      `[purchase] Deal ${dealId} qiymati 0 — Purchase yuborilmaydi`
     );
     return NextResponse.json(
       {
         ok: false,
-        error: "Deal qiymati (Sумма / Opportunity) 0 yoki kiritilmagan. Sotuvchi summa kiritishi kerak.",
+        error: "Deal qiymati 0. Sotuvchi summa kiritishi kerak.",
         dealId,
       },
       { status: 400 }
     );
   }
 
-  // 7. Meta'ga Purchase event yuboramiz
   const purchaseEventId = generateEventId();
 
   try {
@@ -147,10 +120,10 @@ export async function POST(req: NextRequest) {
         firstName,
         lastName,
         country: "uz",
-        fbp: deal.UF_CRM_META_FBP,
-        fbc: deal.UF_CRM_META_FBC,
-        clientIp: deal.UF_CRM_META_CLIENT_IP,
-        clientUserAgent: deal.UF_CRM_META_CLIENT_UA,
+        fbp: deal.UF_CRM_META_FBP as string | undefined,
+        fbc: deal.UF_CRM_META_FBC as string | undefined,
+        clientIp: deal.UF_CRM_META_CLIENT_IP as string | undefined,
+        clientUserAgent: deal.UF_CRM_META_CLIENT_UA as string | undefined,
         externalId: dealId,
       },
       customData: {
@@ -174,12 +147,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 8. Deal'ga belgi qo'yamiz
     try {
       await markDealAsPurchaseSent(dealId);
     } catch (e) {
       console.warn(`[purchase] Deal ${dealId} ga belgi qo'yib bo'lmadi:`, e);
-      // Bu kritik emas, Purchase yuborilgan
     }
 
     console.log(
@@ -203,7 +174,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET — debug uchun (Bitrix robot URL ulanganini tekshirish)
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
