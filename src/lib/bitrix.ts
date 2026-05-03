@@ -128,7 +128,7 @@ export async function createLead(
       ? `${input.productName} — ${input.name}`
       : `Web sayt: ${input.name}`,
     OPENED: "Y",
-    CURRENCY_ID: "UZS",
+    CURRENCY_ID: "USD",
     SOURCE_ID: "WEB",
     CONTACT_ID: contactId,
     COMMENTS: commentLines.join("\n"),
