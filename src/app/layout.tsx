@@ -55,7 +55,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
 
-        {/* META PIXEL — browser-side tracking */}
+        {/* META PIXEL — browser-side tracking.*/}
         {PIXEL_ID && (
           <>
             <Script id="fb-pixel" strategy="afterInteractive">
