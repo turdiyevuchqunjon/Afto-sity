@@ -55,7 +55,8 @@ export default function HomePage() {
                 className="rise mt-8 max-w-xl text-lg leading-relaxed text-ink/70 md:text-xl"
                 style={{ animationDelay: "0.25s" }}
               >
-                Cobalt, Spark, Lacetti, Nexia, Captiva va boshqa o'nlab
+                KIA HYUNDAI BYD JETOUR GM Chevrolet
+                va boshqa o'nlab
                 modellar uchun asl va sertifikatlangan ehtiyot qismlar.
                 Tezkor yetkazib berish — O'zbekiston bo'ylab.
               </p>
