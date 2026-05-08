@@ -195,7 +195,7 @@ export function LeadForm() {
           {...register("productName")}
           id="productName"
           type="text"
-          placeholder="Cobalt 2014 — old amartizator"
+          placeholder="KIA 2020 — old amartizator"
           aria-invalid={errors.productName ? "true" : "false"}
           className="input-field w-full rounded-lg border-2 border-ink/10 bg-white px-4 py-3 text-ink placeholder:text-ink/30"
         />
