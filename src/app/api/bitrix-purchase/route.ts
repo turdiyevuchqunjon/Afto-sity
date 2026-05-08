@@ -7,9 +7,22 @@ export const dynamic = "force-dynamic";
 
 const SECRET_TOKEN = process.env.BITRIX_PURCHASE_WEBHOOK_TOKEN;
 
-// Faqat shu stage'da Purchase event yuboriladi.
-// Bitrix'da "Сотилди" stage'ning ID'si ehtimol C1:WON yoki shunga o'xshash.
-const PURCHASE_STAGES = ["WON", "C1:WON"];
+// Faqat shu stage'larda Purchase event yuboriladi.
+// Bitrix har xil pipeline'da WON stage'i turlicha bo'ladi:
+// - Standart: "WON"
+// - Custom pipeline: "C1:WON", "C2:WON", ...
+// - Uzbek/Lotin nomli: "СОТИЛДИ", "SOTILDI"
+const PURCHASE_STAGES = [
+  "WON",
+  "C1:WON",
+  "C2:WON",
+  "C3:WON",
+  "C4:WON",
+  "C5:WON",
+  "СОТИЛДИ",
+  "SOTILDI",
+  "SUCCESS",
+];
 
 interface BitrixWebhookPayload {
   event?: string;
@@ -32,7 +45,10 @@ async function parsePayload(req: NextRequest): Promise<{
   const contentType = req.headers.get("content-type") || "";
 
   // Bitrix Outgoing Webhook formData yuboradi
-  if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
+  if (
+    contentType.includes("application/x-www-form-urlencoded") ||
+    contentType.includes("multipart/form-data")
+  ) {
     try {
       const formData = await req.formData();
       const dealId =
@@ -41,7 +57,8 @@ async function parsePayload(req: NextRequest): Promise<{
         formData.get("dealId")?.toString() ||
         formData.get("ID")?.toString() ||
         null;
-      const token = formData.get("auth[application_token]")?.toString() || null;
+      const token =
+        formData.get("auth[application_token]")?.toString() || null;
       const event = formData.get("event")?.toString() || null;
       return { dealId, token, event };
     } catch {
@@ -78,7 +95,10 @@ export async function POST(req: NextRequest) {
   const providedToken = urlToken || bodyToken;
   if (!SECRET_TOKEN || providedToken !== SECRET_TOKEN) {
     console.warn("[purchase] Noto'g'ri yoki yo'q token");
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "Unauthorized" },
+      { status: 401 }
+    );
   }
 
   // 2. Deal ID tekshirish
@@ -104,12 +124,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4. Stage tekshirish — faqat "Сотилди" (WON) bo'lsa davom etamiz
+  // 4. Stage tekshirish — DEBUG bilan
   const stage = (deal.STAGE_ID || "").toUpperCase();
+  console.log(
+    `[purchase] Deal ${dealId} STAGE_ID raw="${deal.STAGE_ID}", upper="${stage}"`
+  );
   const isWonStage = PURCHASE_STAGES.some((s) => stage.includes(s));
 
   if (!isWonStage) {
-    console.log(`[purchase] Deal ${dealId} stage="${deal.STAGE_ID}" — Сотилди emas, o'tkazib yuboriladi`);
+    console.log(
+      `[purchase] Deal ${dealId} stage="${deal.STAGE_ID}" — Сотилди emas, o'tkazib yuboriladi (kerakli kalitlar: ${PURCHASE_STAGES.join(", ")})`
+    );
     return NextResponse.json({
       ok: true,
       skipped: true,
@@ -119,7 +144,9 @@ export async function POST(req: NextRequest) {
 
   // 5. Allaqachon yuborilganmi
   if (deal.UF_CRM_META_PURCHASE_SENT === "Y") {
-    console.log(`[purchase] Deal ${dealId} uchun Purchase allaqachon yuborilgan`);
+    console.log(
+      `[purchase] Deal ${dealId} uchun Purchase allaqachon yuborilgan`
+    );
     return NextResponse.json({
       ok: true,
       skipped: true,
@@ -147,7 +174,9 @@ export async function POST(req: NextRequest) {
   const currency = deal.CURRENCY_ID || "USD";
 
   if (!value || value <= 0) {
-    console.warn(`[purchase] Deal ${dealId} qiymati 0 — Purchase yuborilmaydi`);
+    console.warn(
+      `[purchase] Deal ${dealId} qiymati 0 — Purchase yuborilmaydi`
+    );
     return NextResponse.json(
       {
         ok: false,
@@ -245,7 +274,9 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    message: "Endpoint ishlayapti. Bitrix Outgoing Webhook bu URL'ga POST yuborishi kerak.",
-    metaConfigured: !!process.env.META_PIXEL_ID && !!process.env.META_CAPI_ACCESS_TOKEN,
+    message:
+      "Endpoint ishlayapti. Bitrix Outgoing Webhook bu URL'ga POST yuborishi kerak.",
+    metaConfigured:
+      !!process.env.META_PIXEL_ID && !!process.env.META_CAPI_ACCESS_TOKEN,
   });
 }
