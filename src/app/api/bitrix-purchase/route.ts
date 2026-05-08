@@ -16,9 +16,7 @@ const PURCHASE_STAGES = [
   "WON",
   "C1:WON",
   "C2:WON",
-  "C3:WON",
-  "C4:WON",
-  "C5:WON",
+  "UC_NJ9L10",     // ← Sizning «Сотилди» stage'ining haqiqiy ID'si
   "СОТИЛДИ",
   "SOTILDI",
   "SUCCESS",
