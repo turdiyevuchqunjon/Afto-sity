@@ -105,7 +105,7 @@ export default function HomePage() {
                      {/* ============================================================
           MODELS / KATEGORIYALAR
           ============================================================ */}
-      <div className="mx-auto max-w-7xl px-6 py-12 md:py-20 lg:py-24">
+      {/* <div className="mx-auto max-w-7xl px-6 py-12 md:py-20 lg:py-24">
           <div className="mb-12 text-center lg:col-span-5">
             <span className="font-mono text-xs uppercase tracking-[0.3em] text-rust">
               Modellar
@@ -152,7 +152,7 @@ export default function HomePage() {
               <span aria-hidden="true">→</span>
             </a>
           </div>
-</div>
+</div> */}
       </section>
 
  <section className="relative">
